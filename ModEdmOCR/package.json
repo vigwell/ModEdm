@@ -1,0 +1,17 @@
+{
+  "name": "modedmocr",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.732.0",
+    "path": "^0.12.7",
+    "pdf-parse": "^1.1.1",
+    "tesseract.js": "^6.0.0"
+  }
+}
