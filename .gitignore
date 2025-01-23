@@ -1,0 +1,81 @@
+# Build artifacts
+bin/
+obj/
+out/
+*.exe
+*.dll
+*.pdb
+*.cache
+*.so
+*.a
+*.lib
+*.nupkg
+*.snupkg
+*.tar.gz
+
+# Rider / VSCode / Visual Studio files
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Dependency directories
+packages/
+node_modules/
+
+# ASP.NET / Entity Framework specific
+App_Data/
+*.mdf
+*.ldf
+
+# Logs, database, and generated files
+*.log
+*.bak
+*.db
+*.sqlite
+*.swp
+
+# JetBrains Rider
+*.sln.iml
+*.DotSettings.user
+
+# Resharper
+_ReSharper*/
+*.DotSettings
+
+# Visual Studio Code specific
+.vscode/
+.history/
+*.code-workspace
+
+# Dotnet local user settings
+**/secrets/
+**/serviceaccount.json
+**/.vs/
+
+# Configuration files
+appsettings.json
+appsettings.Development.json
+
+# NuGet Packages
+*.nupkg
+project.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Coverage output
+coverage/
+*.coverlet/
+*.coverage
+*.coveragexml
+
+# .NET Core tools
+.dotnet/
+.env
+*.env
+
+# Rider and Resharper user-specific caches
+*.sln.ide
+*.cache/
