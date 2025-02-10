@@ -9,9 +9,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.732.0",
+    "@aws-sdk/client-s3": "^3.738.0",
+    "@azure/ai-form-recognizer": "^5.0.0",
+    "@napi-rs/canvas": "^0.1.65",
+    "axios": "^1.7.9",
+    "fs": "^0.0.1-security",
+    "os": "^0.1.2",
     "path": "^0.12.7",
     "pdf-parse": "^1.1.1",
+    "pdf2img-lambda-friendly": "^2.0.0",
     "tesseract.js": "^6.0.0"
   }
 }

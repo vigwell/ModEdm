@@ -2,7 +2,9 @@ using Amazon.Lambda.Core;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Encodings.Web;
+using System.Threading;
 
+// Assembly attribute for the Lambda function serializer
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
 namespace ModEdmRunner;
@@ -12,6 +14,7 @@ public class Function
     static readonly string baseUrl = Environment.GetEnvironmentVariable("BASE_URL") ?? "https://7olooxrsnrlle72qbvjxmgurue0rwrmi.lambda-url.eu-central-1.on.aws";
     static readonly bool getOnlyNewZipFiles = bool.TryParse(Environment.GetEnvironmentVariable("GET_ONLY_NEW_ZIP_FILES"), out bool result) ? result : false;
     static ApiHelper apiHelper = new ApiHelper(baseUrl);
+    private static readonly SemaphoreSlim semaphore = new SemaphoreSlim(3); // Limit to 3 parallel tasks
 
     public async Task Handler()
     {
@@ -32,24 +35,42 @@ public class Function
                 using (MemoryStream zipStream = new MemoryStream(zipBytes))
                 using (ZipArchive archive = new ZipArchive(zipStream))
                 {
+                    List<MetaFileCaptionInfo> allResults = new List<MetaFileCaptionInfo>();
                     List<Task<MetaFileCaptionInfo>> processingTasks = new List<Task<MetaFileCaptionInfo>>();
 
                     foreach (ZipArchiveEntry entry in archive.Entries)
                     {
-                        LambdaLogger.Log($"Processing file: {entry.FullName}\n");
-                        using (var entryStream = entry.Open())
-                        using (var reader = new MemoryStream())
+                        await semaphore.WaitAsync(); // Ensure max 3 parallel tasks
+
+                        var task = ProcessFile(entry)
+                            .ContinueWith(t =>
+                            {
+                                if (t.Status == TaskStatus.RanToCompletion)
+                                {
+                                    lock (allResults)
+                                    {
+                                        allResults.Add(t.Result);
+                                    }
+                                }
+                                semaphore.Release();
+                                return t.Result; // Ensure the continuation returns the result
+                            });
+
+                        processingTasks.Add(task);
+
+                        // Limit active tasks to 3
+                        if (processingTasks.Count >= 3)
                         {
-                            await entryStream.CopyToAsync(reader);
-                            string base64Content = Convert.ToBase64String(reader.ToArray());
-                            processingTasks.Add(CreateFileMetadataAsync(entry.FullName, base64Content));
+                            var completedTask = await Task.WhenAny(processingTasks);
+                            processingTasks.Remove(completedTask);
                         }
                     }
 
-                    LambdaLogger.Log($"Waiting for all files in {zipFileName} to be processed.\n");
-                    var results = await Task.WhenAll(processingTasks);
+                    // Ensure all remaining tasks complete
+                    await Task.WhenAll(processingTasks);
 
-                    var metaFileInfo = new MetaFileInfo { zipFileName = zipFileName, files = new List<MetaFileCaptionInfo>(results) };
+                    // Collect metadata
+                    var metaFileInfo = new MetaFileInfo { zipFileName = zipFileName, files = allResults };
 
                     JsonSerializerOptions options = new JsonSerializerOptions
                     {
@@ -74,6 +95,20 @@ public class Function
         catch (Exception ex)
         {
             LambdaLogger.Log($"Error processing zip files: {ex.Message}\n{ex.StackTrace}\n");
+        }
+    }
+
+    private async Task<MetaFileCaptionInfo> ProcessFile(ZipArchiveEntry entry)
+    {
+        LambdaLogger.Log($"Processing file: {entry.FullName}\n");
+
+        using (var entryStream = entry.Open())
+        using (var reader = new MemoryStream())
+        {
+            await entryStream.CopyToAsync(reader);
+            string base64Content = Convert.ToBase64String(reader.ToArray());
+
+            return await CreateFileMetadataAsync(entry.FullName, base64Content);
         }
     }
 
