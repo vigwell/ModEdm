@@ -5,6 +5,8 @@ VisualStudioVersion = 17.12.35521.163
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModEdmRunner", "ModEdmRunner\ModEdmRunner.csproj", "{F5F4DCE4-120B-47BE-940C-62063B11642D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModEdmZipAnalyzer", "ModEdmZipAnalyzer\ModEdmZipAnalyzer.csproj", "{B3F015A9-CD51-4EE7-9C3D-5F18852F1C12}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{F5F4DCE4-120B-47BE-940C-62063B11642D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5F4DCE4-120B-47BE-940C-62063B11642D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5F4DCE4-120B-47BE-940C-62063B11642D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3F015A9-CD51-4EE7-9C3D-5F18852F1C12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3F015A9-CD51-4EE7-9C3D-5F18852F1C12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3F015A9-CD51-4EE7-9C3D-5F18852F1C12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3F015A9-CD51-4EE7-9C3D-5F18852F1C12}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

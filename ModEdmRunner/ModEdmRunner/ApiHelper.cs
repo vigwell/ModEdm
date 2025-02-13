@@ -9,7 +9,7 @@ public class ApiHelper
 
     public ApiHelper(string baseUrl)
     {
-        var options = new RestClientOptions(baseUrl);
+        var options = new RestClientOptions(baseUrl) {  Timeout = TimeSpan.FromMinutes(10) };
         _client = new RestClient(options);
     }
 
@@ -90,7 +90,6 @@ public class ApiHelper
 
         var jsonBody = JsonSerializer.Serialize(getFileCaptionRequest);
         request.AddStringBody(jsonBody, DataFormat.Json);
-
         RestResponse response = await _client.ExecuteAsync(request);
 
         if (response.IsSuccessful && !string.IsNullOrEmpty(response.Content))
