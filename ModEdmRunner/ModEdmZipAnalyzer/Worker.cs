@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ModEdmZipAnalyzer
 {
@@ -255,8 +256,21 @@ namespace ModEdmZipAnalyzer
                     }
                     else
                     {
-                        sText =  await ExtractTextFromImage(base64String);
-                    }
+                        string tempImagePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg");
+                        try 
+                        { 
+                            byte[] byteArray = memoryStream.ToArray();
+                            File.WriteAllBytes(tempImagePath, byteArray);
+                            sText =  await ExtractTextFromImage(tempImagePath);
+                        }
+                        finally
+                        {
+                            if (File.Exists(tempImagePath))
+                            {
+                                File.Delete(tempImagePath);
+                            }
+                        }
+        }
                     sText = await CleanExtractedText(sText);
                     return sText;
                 }
@@ -282,7 +296,21 @@ namespace ModEdmZipAnalyzer
             cleanedText = Regex.Replace(cleanedText, @"\s{2,}", " ");
             cleanedText = cleanedText.Replace("__", "").Trim();
 
-            return cleanedText;
+            return await ExtractHebrewText(cleanedText);
+        }
+
+        private async Task<string> ExtractHebrewText(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return string.Empty;
+
+            // Regular expression to match Hebrew characters (Aleph to Tav) and common punctuation
+            string pattern = @"[\u0590-\u05FF\s,.\-—\d]+";
+
+            // Match only Hebrew content
+            Match match = Regex.Match(input, pattern);
+
+            return match.Success ? match.Value.Trim() : string.Empty;
         }
 
         private async Task<string> ExtractTextFromPdf(string base64String, int maxPages = 5)
@@ -310,15 +338,10 @@ namespace ModEdmZipAnalyzer
                     for (int i = 1; i <= pageCount; i++)
                     {
                         var page = pdf.GetPage(i);
-
-                        // Extract selectable text from PDF
                         string pageText = page.Text;
-                        extractedText += pageText + " ";
 
-                        // Convert PDF page to Image and extract text via OCR
                         using (MagickImage image = ConvertPdfPageToImage(tempFilePath, i))
                         {
-
                             ConvertToMonochrome(image);
 
                             byte[] byteArray = image.ToByteArray(MagickFormat.Jpeg);
@@ -327,8 +350,9 @@ namespace ModEdmZipAnalyzer
 
                             try
                             {
-                                // Extract text from image using OCR
-                                extractedText += await ExtractTextFromImage(tempImagePath) + " ";
+                                // Extract text from image using OCR and prepend it
+                                string ocrText = await ExtractTextFromImage(tempImagePath) + " ";
+                                extractedText = ocrText + extractedText;
                             }
                             finally
                             {
@@ -338,6 +362,10 @@ namespace ModEdmZipAnalyzer
                                 }
                             }
                         }
+
+                        // Extract selectable text from PDF and append
+
+                        extractedText += pageText + " ";
                     }
                 }
             }
