@@ -212,6 +212,8 @@ namespace ModEdmZipAnalyzer
         {
             try
             {
+                string firstPageBase64String = ""; // TODO
+
                 using (var entryStream = entry.Open())
                 using (var ms = new MemoryStream())
                 {
@@ -219,10 +221,22 @@ namespace ModEdmZipAnalyzer
                     ms.Position = 0;
 
                     _eventLog.WriteEntry($"Starting OCR Analysis for {fileName}...", EventLogEntryType.Information);
+                    
                     string strFileText = await GetTextByOCR(ms, fileName);
 
+                    string strFileCaption = fileName;
+
                     _eventLog.WriteEntry($"Starting AI Analysis for {fileName}...", EventLogEntryType.Information);
-                    string strFileCaption = await GetCaptionByAI(strFileText, fileName);
+                    strFileCaption = await GetCaptionByAI( strFileText, fileName);
+
+                    // TODO: Add AI analysis for first page
+                    //if (strFileCaption == "NOT_FOUND" && !string.IsNullOrEmpty(firstPageBase64String) )
+                    //{
+                    //    _eventLog.WriteEntry($"Starting AI Analysis based on first page for {fileName}...", EventLogEntryType.Information);
+                    //    strFileCaption = (await _ai_apiHelper.GetCaptionByAI(firstPageBase64String, true)).Payload.Result;
+                    //}
+
+
 
                     _eventLog.WriteEntry($"File {fileName} processed successfully.", EventLogEntryType.Information);
 
@@ -295,23 +309,12 @@ namespace ModEdmZipAnalyzer
             cleanedText = cleanedText.Replace("", "");
             cleanedText = Regex.Replace(cleanedText, @"\s{2,}", " ");
             cleanedText = cleanedText.Replace("__", "").Trim();
-
-            return await ExtractHebrewText(cleanedText);
-        }
-
-        private async Task<string> ExtractHebrewText(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
+            if (cleanedText.Length < 3)
                 return string.Empty;
-
-            // Regular expression to match Hebrew characters (Aleph to Tav) and common punctuation
-            string pattern = @"[\u0590-\u05FF\s,.\-—\d]+";
-
-            // Match only Hebrew content
-            Match match = Regex.Match(input, pattern);
-
-            return match.Success ? match.Value.Trim() : string.Empty;
+            return cleanedText;
         }
+
+        
 
         private async Task<string> ExtractTextFromPdf(string base64String, int maxPages = 5)
         {
@@ -429,8 +432,6 @@ namespace ModEdmZipAnalyzer
         {
             try
             {
-                //_eventLog.WriteEntry("Extracting text from image using Tesseract...", EventLogEntryType.Information);
-
                 string extractedText = "";
                 string sTessPath = Path.Combine(GetCurrentDllPath(), "tessdata");
 

@@ -15,15 +15,27 @@ public class ApiHelper
         _client = new RestClient(options);
     }
 
-    public async Task<AnalyzeTextResponse> GetCaptionByAI(string text)
+    public async Task<AnalyzeAIResponse> GetCaptionByAI(string content, bool isImage = false)
     {
         var request = new RestRequest("", Method.Post);
         request.AddHeader("Content-Type", "application/json");
 
-        var apiRequest = new AnalyzeTextRequest
+        object apiRequest;
+    
+        if (isImage)
         {
-            inputText = text
-        };
+            apiRequest = new AnalyzeImageRequest
+            {
+                base64String = content
+            };
+        }
+        else
+        {
+            apiRequest = new AnalyzeTextRequest
+            {
+                inputText = content
+            };
+        }
 
         JsonSerializerOptions options = new JsonSerializerOptions
         {
@@ -37,7 +49,7 @@ public class ApiHelper
         RestResponse response = await _client.ExecuteAsync(request);
 
         if (response.IsSuccessful && !string.IsNullOrEmpty(response.Content))
-            return JsonSerializer.Deserialize<AnalyzeTextResponse>(response.Content);
+            return JsonSerializer.Deserialize<AnalyzeAIResponse>(response.Content);
         else
             throw new Exception($"API call failed: {response.ErrorMessage}");
     }
@@ -63,7 +75,18 @@ public class AnalyzeTextRequest : ApiRequestBase
     }
 }
 
-public class AnalyzeTextResponse : ApiResponse<string>
+public class AnalyzeImageRequest : ApiRequestBase
+{
+    [JsonPropertyName("base64String")]
+    public string base64String { get; set; }
+
+    public AnalyzeImageRequest()
+    {
+        this.Action = "analyzeImage";
+    }
+}
+
+public class AnalyzeAIResponse : ApiResponse<string>
 {
 
 }
