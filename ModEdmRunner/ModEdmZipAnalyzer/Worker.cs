@@ -183,7 +183,7 @@ namespace ModEdmZipAnalyzer
                         using (var archive = new ZipArchive(zipStream))
                         {
                             // Process all files inside the ZIP in parallel
-                            var fileTasks = archive.Entries.Select(entry => ProcessFile(entry.FullName, entry));
+                            var fileTasks = archive.Entries.Select(entry => ProcessFile2(entry.FullName, entry));
 
                             // Await all file processing tasks and store results
                             processedFiles.AddRange(await Task.WhenAll(fileTasks));
@@ -207,6 +207,39 @@ namespace ModEdmZipAnalyzer
             }
         }
 
+        private async Task<MetaFileCaptionInfo> ProcessFile2(string fileName, ZipArchiveEntry entry)
+        {
+            try
+            {
+                using (var entryStream = entry.Open())
+                using (var ms = new MemoryStream())
+                {
+                    await entryStream.CopyToAsync(ms);
+                    ms.Position = 0;
+
+                    _eventLog.WriteEntry($"Starting  Analysis for {fileName}...", EventLogEntryType.Information);
+
+                    string firstPageBase64String = await GetDocFirstPageImage(ms, fileName);
+
+                    string strFileCaption = fileName;
+    
+                    _eventLog.WriteEntry($"Starting AI Analysis based on first page for {fileName}...", EventLogEntryType.Information);
+                    strFileCaption = (await _ai_apiHelper.GetCaptionByAI(firstPageBase64String, true)).Payload.Result;
+
+                    _eventLog.WriteEntry($"File {fileName} processed successfully.", EventLogEntryType.Information);
+
+                    return new MetaFileCaptionInfo { fileName = fileName, fileCaption = strFileCaption };
+                }
+            }
+            catch (Exception ex)
+            {
+                _eventLog.WriteEntry($"Error processing file {fileName}: {ex.Message}", EventLogEntryType.Error);
+                return new MetaFileCaptionInfo { fileName = fileName, fileCaption = $"Error: {ex.Message}" };
+            }
+        }
+
+
+        
 
         private async Task<MetaFileCaptionInfo> ProcessFile(string fileName, ZipArchiveEntry entry)
         {
@@ -454,7 +487,55 @@ namespace ModEdmZipAnalyzer
             }
         }
 
+        private async Task<string> GetDocFirstPageImage(Stream fileStream, string fileName)
+        {
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await fileStream.CopyToAsync(memoryStream);
+                    byte[] fileBytes = memoryStream.ToArray();
+                    string base64String = Convert.ToBase64String(fileBytes);
 
+                    bool isPdf = base64String.StartsWith("JVBER"); // PDF signature check
+                    string base64Image = "";
+
+                    if (isPdf)
+                    {
+                        string tempPdfPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".pdf");
+                        File.WriteAllBytes(tempPdfPath, fileBytes);
+
+                        using (MagickImage image = ConvertPdfPageToImage(tempPdfPath, 1)) // First page
+                        {
+                            byte[] imageBytes = image.ToByteArray(MagickFormat.Jpeg);
+                            base64Image = Convert.ToBase64String(imageBytes);
+                        }
+
+                        File.Delete(tempPdfPath);
+                    }
+                    else
+                    {
+                        string tempImagePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg");
+                        File.WriteAllBytes(tempImagePath, fileBytes);
+
+                        using (MagickImage image = new MagickImage(tempImagePath))
+                        {
+                            byte[] imageBytes = image.ToByteArray(MagickFormat.Jpeg);
+                            base64Image = Convert.ToBase64String(imageBytes);
+                        }
+
+                        File.Delete(tempImagePath);
+                    }
+
+                    return base64Image;
+                }
+            }
+            catch (Exception ex)
+            {
+                _eventLog.WriteEntry($"Error in GetDocFirstPageImage: {ex.Message}", EventLogEntryType.Error);
+                throw;
+            }
+        }
 
         // Convert Image to Monochrome (Black & White)
         private void ConvertToMonochrome(MagickImage image)
